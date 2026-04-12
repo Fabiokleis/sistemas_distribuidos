@@ -3,8 +3,6 @@
 #+DATE: 2026-04-12
 #+DESCRIPTION: Documentação do trabalho sistema promoção: Microsserviços, Sistema de Mensageria, Criptografia de Chave Assimétrica.
 
-* sistemas_distribuidos
-
 trabalho sistema de promoção, para a comunicação dos microsserviços foi utilizado o middleware Rabbitmq.
 
 ** RabbitMQ
