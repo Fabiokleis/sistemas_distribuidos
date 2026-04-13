@@ -24,5 +24,12 @@ run-%: $(BINARY_DIR)/%
 	@echo "executing $* ..."
 	@./$(BINARY_DIR)/$*
 
+test:
+	$(GOCMD) test -v -count=1 ./cmd/client/... ./internal/...
+
+test-%:
+	$(GOCMD) test -v -count=1 ./cmd/$*/...
+
 clean:
-	rm -rf $(BINARY_DIR)
+	@echo "removing $(BINARY_DIR) ..."
+	@rm -rf $(BINARY_DIR)
