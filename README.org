@@ -32,9 +32,9 @@ Para compilar todos os microsserviços:
 make 
 #+END_SRC
 
-Para executar:
-#+BEGIN_SRC bash
-make run
+Gere as chaves em keys executando:
+#+BEGIN_SRC
+make gen-keys
 #+END_SRC
 
 Para remover os binários:
