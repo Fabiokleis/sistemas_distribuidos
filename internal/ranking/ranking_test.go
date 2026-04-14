@@ -1,9 +1,12 @@
 package ranking
 
 import (
+	"crypto/rsa"
+	"log"
 	"testing"
 	"time"
 
+	"promocao/internal/crypto"
 	ex "promocao/internal/exchange"
 	"promocao/internal/models/proto/events"
 	mq "promocao/internal/rabbitmq"
@@ -33,17 +36,27 @@ func TestRankingIntegration(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	testID := "ranking-promo-123"
+	var gtwPrivateKey *rsa.PrivateKey
+	gtwPrivateKey, err = crypto.LoadPrivateKey(crypto.GetKeyPath(ex.Gateway + ex.PrivateKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load rsa private key: %v", err)
+	}
 
-	for i := 0; i < HotDealThreshold; i++ {
+	for i := 0; i < ex.HotDealThreshold; i++ {
 		voteEvent := &events.VoteEvent{
 			PromotionId: testID,
 			VoteValue:   1,
 			Category:    "game",
 			Description: "The Witcher 3 - 80% Off",
 		}
+		outInnerBytes, _ := proto.Marshal(voteEvent)
+		signature, err := crypto.SignPayload(gtwPrivateKey, outInnerBytes)
+
 		envelopeVote := &events.EventEnvelope{
-			Timestamp: timestamppb.Now(),
-			Payload:   &events.EventEnvelope_Vote{Vote: voteEvent},
+			Timestamp:  timestamppb.Now(),
+			ProducerId: ex.Gateway,
+			Signature:  signature,
+			Payload:    &events.EventEnvelope_Vote{Vote: voteEvent},
 		}
 		bodyVote, _ := proto.Marshal(envelopeVote)
 

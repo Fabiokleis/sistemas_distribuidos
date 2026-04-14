@@ -1,9 +1,11 @@
 package notification
 
 import (
+	"crypto/rsa"
 	"log"
 	"log/slog"
 
+	"promocao/internal/crypto"
 	ex "promocao/internal/exchange"
 	"promocao/internal/models/proto/events"
 	mq "promocao/internal/rabbitmq"
@@ -12,6 +14,24 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var (
+	promocaoPubKey *rsa.PublicKey
+	rankingPubKey  *rsa.PublicKey
+)
+
+func loadKeys() {
+	var err error
+	promocaoPubKey, err = crypto.LoadPublicKey(crypto.GetKeyPath(ex.Promocao + ex.PublicKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load promocao public key: %v", err)
+	}
+
+	rankingPubKey, err = crypto.LoadPublicKey(crypto.GetKeyPath(ex.Ranking + ex.PublicKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load ranking public key: %v", err)
+	}
+}
+
 func Run() {
 	ch, err := mq.Connection.Channel()
 	if err != nil {
@@ -19,6 +39,7 @@ func Run() {
 	}
 	defer ch.Close()
 
+	loadKeys()
 	log.Println("[*] ms notification started ...")
 
 	msgs, err := mq.SetupConsumer(ch, ex.KeyPromotionPublished, ex.KeyHotDeal) // promocao.publicada promocao.destaque
@@ -50,6 +71,22 @@ func processNotification(ch *amqp.Channel, d amqp.Delivery) {
 	}
 
 	promo := payload.PromotionPublished
+
+	var pubKeyToUse *rsa.PublicKey
+	if d.RoutingKey == ex.KeyPromotionPublished {
+		pubKeyToUse = promocaoPubKey
+	} else if d.RoutingKey == ex.KeyHotDeal {
+		pubKeyToUse = rankingPubKey
+	}
+
+	innerBytes, _ := proto.Marshal(promo)
+	err := crypto.VerifySignature(pubKeyToUse, innerBytes, envelope.Signature)
+	if err != nil {
+		slog.Error("INVALID SIGNATURE: ms-notificacao dropped untrusted message",
+			"routing_key", d.RoutingKey,
+			"error", err)
+		return
+	}
 
 	if d.RoutingKey == ex.KeyHotDeal {
 		promo.Description = "**HOT DEAL**: " + promo.Description

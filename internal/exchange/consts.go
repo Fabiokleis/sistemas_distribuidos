@@ -5,7 +5,14 @@ const Name = "promocao"
 var Categories = []string{"livro", "jogo"}
 
 const (
-	ContentType = "application/x-protobuf"
+	PrivateKeySuffix = "_private.pem"
+	PublicKeySuffix  = "_public.pem"
+	Gateway          = "gateway"
+	Promocao         = "promocao"
+	Ranking          = "ranking"
+
+	HotDealThreshold = 3
+	ContentType      = "application/x-protobuf"
 	// published by gateway
 	KeyPromotionReceived = "promocao.recebida"
 	KeyPromotionVote     = "promocao.voto"

@@ -1,10 +1,15 @@
 package gateway
 
 import (
+	"crypto/rsa"
+	"log"
+	"log/slog"
 	"testing"
 	"time"
 
+	"promocao/internal/crypto"
 	"promocao/internal/exchange"
+	ex "promocao/internal/exchange"
 	"promocao/internal/models/proto/events"
 	mq "promocao/internal/rabbitmq"
 
@@ -29,7 +34,7 @@ func TestPublishPromotion(t *testing.T) {
 		t.Fatalf("failed to declare queue: %v", err)
 	}
 
-	err = ch.QueueBind(q.Name, exchange.KeyPromotionReceived, exchange.Name, false, nil)
+	err = ch.QueueBind(q.Name, ex.KeyPromotionReceived, ex.Name, false, nil)
 	if err != nil {
 		t.Fatalf("failed to bind queue: %v", err)
 	}
@@ -42,6 +47,7 @@ func TestPublishPromotion(t *testing.T) {
 	testCategory := "book"
 	testDescription := "Test Book 50% Off Gateway"
 
+	loadKeys()
 	publishPromotion(ch, testCategory, testDescription)
 
 	select {
@@ -83,11 +89,6 @@ func TestPublicationConsumer(t *testing.T) {
 	}
 	defer ch.Close()
 
-	err = ch.ExchangeDeclare(exchange.Name, "topic", true, false, false, false, nil)
-	if err != nil {
-		t.Fatalf("failed to declare exchange: %v", err)
-	}
-
 	go setupPublicationConsumer(ch)
 
 	time.Sleep(500 * time.Millisecond)
@@ -99,9 +100,24 @@ func TestPublicationConsumer(t *testing.T) {
 		Description: "GTA V 90% Off",
 	}
 
+	var promocaoPrivateKey *rsa.PrivateKey
+	promocaoPrivateKey, err = crypto.LoadPrivateKey(crypto.GetKeyPath(ex.Promocao + ex.PrivateKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load rsa private key: %v", err)
+	}
+
+	outInnerBytes, _ := proto.Marshal(publishedEvent)
+	signature, err := crypto.SignPayload(promocaoPrivateKey, outInnerBytes)
+	if err != nil {
+		slog.Error("failed to sign outgoing promotion", "error", err)
+		return
+	}
+
 	envelope := &events.EventEnvelope{
-		Timestamp: timestamppb.Now(),
-		Payload:   &events.EventEnvelope_PromotionPublished{PromotionPublished: publishedEvent},
+		Timestamp:  timestamppb.Now(),
+		ProducerId: ex.Promocao,
+		Signature:  signature,
+		Payload:    &events.EventEnvelope_PromotionPublished{PromotionPublished: publishedEvent},
 	}
 
 	bodyBytes, err := proto.Marshal(envelope)

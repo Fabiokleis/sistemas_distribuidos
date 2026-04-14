@@ -1,9 +1,12 @@
 package notification
 
 import (
+	"crypto/rsa"
+	"log"
 	"testing"
 	"time"
 
+	"promocao/internal/crypto"
 	ex "promocao/internal/exchange"
 	"promocao/internal/models/proto/events"
 	mq "promocao/internal/rabbitmq"
@@ -31,6 +34,12 @@ func TestNotificationRouting(t *testing.T) {
 		t.Fatalf("failed to setup test consumer: %v", err)
 	}
 
+	var rankingPrivateKey *rsa.PrivateKey
+	rankingPrivateKey, err = crypto.LoadPrivateKey(crypto.GetKeyPath(ex.Ranking + ex.PrivateKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load rsa private key: %v", err)
+	}
+
 	go Run()
 	time.Sleep(500 * time.Millisecond)
 
@@ -41,9 +50,15 @@ func TestNotificationRouting(t *testing.T) {
 		Category:    testCategory,
 		Description: originalDesc,
 	}
+
+	outInnerBytes, _ := proto.Marshal(hotDealPromo)
+	signature, err := crypto.SignPayload(rankingPrivateKey, outInnerBytes)
+
 	envelope := &events.EventEnvelope{
-		Timestamp: timestamppb.Now(),
-		Payload:   &events.EventEnvelope_PromotionPublished{PromotionPublished: hotDealPromo},
+		Timestamp:  timestamppb.Now(),
+		ProducerId: ex.Ranking,
+		Signature:  signature,
+		Payload:    &events.EventEnvelope_PromotionPublished{PromotionPublished: hotDealPromo},
 	}
 	body, _ := proto.Marshal(envelope)
 

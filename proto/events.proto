@@ -8,13 +8,14 @@ import "google/protobuf/timestamp.proto";
 
 
 message EventEnvelope {
-    string signature = 1;
-    google.protobuf.Timestamp timestamp = 2;
+    google.protobuf.Timestamp timestamp = 1;
+    string producer_id = 2; 
+    bytes signature = 3;
 
     oneof payload {
-        NewPromotionEvent new_promotion = 3;
-        VoteEvent vote = 4;
-        PromotionPublishedEvent promotion_published = 5;
+        NewPromotionEvent new_promotion = 4;
+        VoteEvent vote = 5;
+        PromotionPublishedEvent promotion_published = 6;
     }
 }
 

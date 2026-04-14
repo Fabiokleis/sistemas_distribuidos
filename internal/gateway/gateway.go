@@ -1,12 +1,14 @@
 package gateway
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"log"
 	"log/slog"
 	"os"
 	"sync"
 
+	"promocao/internal/crypto"
 	"promocao/internal/exchange"
 	ex "promocao/internal/exchange"
 	"promocao/internal/models/proto/events"
@@ -20,9 +22,24 @@ import (
 )
 
 var (
-	promos = make(map[string]*events.PromotionPublishedEvent)
-	mu     sync.RWMutex
+	privateKey     *rsa.PrivateKey
+	promocaoPubKey *rsa.PublicKey
+	promos         = make(map[string]*events.PromotionPublishedEvent)
+	mu             sync.RWMutex
 )
+
+func loadKeys() {
+	var err error
+	privateKey, err = crypto.LoadPrivateKey(crypto.GetKeyPath(ex.Gateway + ex.PrivateKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load rsa private key: %v", err)
+	}
+
+	promocaoPubKey, err = crypto.LoadPublicKey(crypto.GetKeyPath(ex.Promocao + ex.PublicKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load rsa public key: %v", err)
+	}
+}
 
 func Run() {
 	ch, err := mq.Connection.Channel()
@@ -31,6 +48,7 @@ func Run() {
 	}
 	defer ch.Close()
 
+	loadKeys()
 	go setupPublicationConsumer(ch)
 
 	runMenu(ch)
@@ -55,6 +73,21 @@ func setupPublicationConsumer(ch *amqp.Channel) {
 		}
 
 		if p, ok := envelope.Payload.(*events.EventEnvelope_PromotionPublished); ok {
+
+			innerBytes, err := proto.Marshal(p.PromotionPublished)
+			if err != nil {
+				slog.Error("failed to marshal internal payload for verification", "error", err)
+				continue
+			}
+
+			err = crypto.VerifySignature(promocaoPubKey, innerBytes, envelope.Signature)
+			if err != nil {
+				slog.Error("INVALID SIGNATURE: gateway dropped untrusted message from ms promocao",
+					"error", err,
+					"producer_id", envelope.ProducerId)
+				continue
+			}
+
 			mu.Lock()
 			promos[p.PromotionPublished.PromotionId] = p.PromotionPublished
 			mu.Unlock()
@@ -143,9 +176,19 @@ func publishPromotion(ch *amqp.Channel, category string, description string) {
 		Description: description,
 	}
 
+	innerBytes, _ := proto.Marshal(event)
+
+	signature, err := crypto.SignPayload(privateKey, innerBytes)
+	if err != nil {
+		slog.Error("failed to sign payload", "error", err)
+		return
+	}
+
 	wrap := &events.EventEnvelope{
-		Timestamp: timestamppb.Now(),
-		Payload:   &events.EventEnvelope_NewPromotion{NewPromotion: event},
+		Timestamp:  timestamppb.Now(),
+		ProducerId: ex.Gateway,
+		Signature:  signature,
+		Payload:    &events.EventEnvelope_NewPromotion{NewPromotion: event},
 	}
 
 	bodyBytes, err := proto.Marshal(wrap)
@@ -206,9 +249,19 @@ func handleVote(ch *amqp.Channel) {
 		Description: selectedPromo.Description,
 	}
 
+	innerBytes, _ := proto.Marshal(voteEvent)
+
+	signature, err := crypto.SignPayload(privateKey, innerBytes)
+	if err != nil {
+		slog.Error("failed to sign payload", "error", err)
+		return
+	}
+
 	envelope := &events.EventEnvelope{
-		Timestamp: timestamppb.Now(),
-		Payload:   &events.EventEnvelope_Vote{Vote: voteEvent},
+		Timestamp:  timestamppb.Now(),
+		ProducerId: ex.Gateway,
+		Signature:  signature,
+		Payload:    &events.EventEnvelope_Vote{Vote: voteEvent},
 	}
 
 	body, err := proto.Marshal(envelope)

@@ -1,9 +1,11 @@
 package promocao
 
 import (
+	"crypto/rsa"
 	"log"
 	"log/slog"
 
+	"promocao/internal/crypto"
 	ex "promocao/internal/exchange"
 	"promocao/internal/models/proto/events"
 	"promocao/internal/rabbitmq"
@@ -14,12 +16,32 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+var (
+	privateKey    *rsa.PrivateKey
+	gatewayPubKey *rsa.PublicKey
+)
+
+func loadKeys() {
+	var err error
+	privateKey, err = crypto.LoadPrivateKey(crypto.GetKeyPath(ex.Promocao + ex.PrivateKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load rsa private key: %v", err)
+	}
+
+	gatewayPubKey, err = crypto.LoadPublicKey(crypto.GetKeyPath(ex.Gateway + ex.PublicKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load rsa public key: %v", err)
+	}
+}
+
 func Run() {
 	ch, err := mq.Connection.Channel()
 	if err != nil {
 		log.Fatalf("failed to open channel: %v", err)
 	}
 	defer ch.Close()
+
+	loadKeys()
 
 	log.Println("[*] ms-promocao started ...")
 
@@ -53,13 +75,26 @@ func processIncomingPromotion(ch *amqp.Channel, body []byte) {
 
 	newPromo := payload.NewPromotion
 
-	// TODO: adicionar validacao chave assimetrica
-	if newPromo.Category == "" || newPromo.Description == "" {
-		slog.Warn("promoção rejeitada por falta de dados", "id", newPromo.PromotionId)
+	innerBytes, err := proto.Marshal(newPromo)
+	if err != nil {
+		slog.Error("failed to marshal internal payload for verification", "error", err)
 		return
 	}
 
-	slog.Info("promocao checked",
+	err = crypto.VerifySignature(gatewayPubKey, innerBytes, envelope.Signature)
+	if err != nil {
+		slog.Error("INVALID SIGNATURE: ms promotion dropped untrusted message from gateway",
+			"error", err,
+			"promotion_id", newPromo.PromotionId)
+		return
+	}
+
+	if newPromo.Category == "" || newPromo.Description == "" {
+		slog.Warn("promotion dropped missing data", "id", newPromo.PromotionId)
+		return
+	}
+
+	slog.Info("promocao verified and signed",
 		"promotion_id", newPromo.PromotionId,
 		"category", newPromo.Category,
 		"description", newPromo.Description,
@@ -71,9 +106,18 @@ func processIncomingPromotion(ch *amqp.Channel, body []byte) {
 		Description: newPromo.Description,
 	}
 
+	outInnerBytes, _ := proto.Marshal(publishedEvent)
+	signature, err := crypto.SignPayload(privateKey, outInnerBytes)
+	if err != nil {
+		slog.Error("failed to sign outgoing promotion", "error", err)
+		return
+	}
+
 	outEnvelope := &events.EventEnvelope{
-		Timestamp: timestamppb.Now(),
-		Payload:   &events.EventEnvelope_PromotionPublished{PromotionPublished: publishedEvent},
+		Timestamp:  timestamppb.Now(),
+		ProducerId: ex.Promocao,
+		Signature:  signature,
+		Payload:    &events.EventEnvelope_PromotionPublished{PromotionPublished: publishedEvent},
 	}
 
 	outBody, err := proto.Marshal(outEnvelope)

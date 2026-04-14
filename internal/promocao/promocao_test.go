@@ -1,9 +1,12 @@
 package promocao
 
 import (
+	"crypto/rsa"
+	"log"
 	"testing"
 	"time"
 
+	"promocao/internal/crypto"
 	ex "promocao/internal/exchange"
 	"promocao/internal/models/proto/events"
 	mq "promocao/internal/rabbitmq"
@@ -39,9 +42,20 @@ func TestPromocaoIntegration(t *testing.T) {
 		Description: "Smartphone com 20% de desconto",
 	}
 
+	var gtwPrivateKey *rsa.PrivateKey
+	gtwPrivateKey, err = crypto.LoadPrivateKey(crypto.GetKeyPath(ex.Gateway + ex.PrivateKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load rsa private key: %v", err)
+	}
+
+	outInnerBytes, _ := proto.Marshal(newPromo)
+	signature, err := crypto.SignPayload(gtwPrivateKey, outInnerBytes)
+
 	envelope := &events.EventEnvelope{
-		Timestamp: timestamppb.Now(),
-		Payload:   &events.EventEnvelope_NewPromotion{NewPromotion: newPromo},
+		Timestamp:  timestamppb.Now(),
+		ProducerId: ex.Gateway,
+		Signature:  signature,
+		Payload:    &events.EventEnvelope_NewPromotion{NewPromotion: newPromo},
 	}
 
 	bodyBytes, _ := proto.Marshal(envelope)
