@@ -1,8 +1,9 @@
 package rabbitmq
 
 import (
-	"os"
 	"log"
+	"os"
+	"promocao/internal/exchange"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -20,5 +21,25 @@ func Init() error {
 		return err
 	}
 	Connection = conn
+	ch, err := Connection.Channel()
+	if err != nil {
+		log.Fatalf("failed to open a channel error: %v", err)
+		return err
+	}
+	defer ch.Close()
+
+	err = ch.ExchangeDeclare(
+		exchange.Name, // nome da exchange
+		"topic",       // tipo
+		true,          // durable
+		false,         // auto-deleted
+		false,         // internal
+		false,         // no-wait
+		nil,           // arguments
+	)
+	if err != nil {
+		log.Fatalf("failed to declare exchange: %v", err)
+	}
+
 	return nil
 }

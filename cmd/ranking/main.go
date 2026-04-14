@@ -1,7 +1,17 @@
 package main
 
-import "fmt"
+import (
+	"log"
+
+	mq "promocao/internal/rabbitmq"
+	"promocao/internal/ranking"
+)
 
 func main() {
-	fmt.Println("Hello, World!")
+	if err := mq.Init(); err != nil {
+		log.Fatalf("failed to connect to RabbitMQ: %v", err)
+	}
+	defer mq.Connection.Close()
+
+	ranking.Run()
 }

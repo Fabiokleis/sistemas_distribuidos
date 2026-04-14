@@ -5,6 +5,13 @@
 
 trabalho sistema de promoção, para a comunicação dos microsserviços foi utilizado o middleware Rabbitmq.
 
+** Protobuf
+os microsserviços utilizam protobuf para comunicação.
+instale o protoc e o plugin para golang, para nixos execute:
+#+BEGIN_SRC bash
+nix-shell -p protoc-gen-go
+#+END_SRC
+
 ** RabbitMQ
 para executar um broker rabbitmq localmente com docker: 
 #+BEGIN_SRC bash
