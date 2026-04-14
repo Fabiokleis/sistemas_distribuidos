@@ -34,6 +34,10 @@ test: build
 test-%: $(BINARY_DIR)/%
 	$(GOCMD) test -v -count=1 ./internal/$*/...
 
+gen-keys:
+	@echo "generating rsa keys ..."
+	go run ./cmd/keygen/main.go -out=keys
+
 clean:
 	@echo "removing $(BINARY_DIR) ..."
 	@rm -rf $(BINARY_DIR)
