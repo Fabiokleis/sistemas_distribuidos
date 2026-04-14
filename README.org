@@ -43,4 +43,4 @@ make clean
 #+END_SRC
 
 ** Exemplo
-[[[[file:exemplo.png]]]]
+[[file:exemplo.png]]
