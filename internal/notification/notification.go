@@ -73,9 +73,10 @@ func processNotification(ch *amqp.Channel, d amqp.Delivery) {
 	promo := payload.PromotionPublished
 
 	var pubKeyToUse *rsa.PublicKey
-	if d.RoutingKey == ex.KeyPromotionPublished {
+	switch d.RoutingKey {
+	case ex.KeyPromotionPublished:
 		pubKeyToUse = promocaoPubKey
-	} else if d.RoutingKey == ex.KeyHotDeal {
+	case ex.KeyHotDeal:
 		pubKeyToUse = rankingPubKey
 	}
 
