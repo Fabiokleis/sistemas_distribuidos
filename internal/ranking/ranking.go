@@ -16,13 +16,17 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type PromoState struct {
+	Score     int32
+	IsHotDeal bool
+}
+
 var (
 	privateKey    *rsa.PrivateKey
 	gatewayPubKey *rsa.PublicKey
 
-	votes    = make(map[string]int32) // promo
-	hotDeals = make(map[string]bool)
-	mu       sync.Mutex
+	promos = make(map[string]*PromoState)
+	mu     sync.Mutex
 )
 
 func loadKeys() {
@@ -85,25 +89,37 @@ func processVote(ch *amqp.Channel, d amqp.Delivery) {
 		return
 	}
 
-	mu.Lock()
-	defer mu.Unlock()
-
 	promoID := vote.PromotionId
-	votes[promoID] += vote.VoteValue
+	mu.Lock()
+
+	if promos[promoID] == nil {
+		promos[promoID] = &PromoState{Score: 0, IsHotDeal: false}
+	}
+
+	state := promos[promoID]
+	state.Score += vote.VoteValue
+	currentScore := state.Score
+
+	shouldPublish := false
+	if currentScore >= ex.HotDealThreshold && !state.IsHotDeal {
+		state.IsHotDeal = true
+		shouldPublish = true
+	}
+
+	mu.Unlock()
 
 	slog.Info("vote verified",
 		"promotion_id", promoID,
 		"category", vote.Category,
-		"value", votes[promoID],
+		"value", currentScore,
 		"description", vote.Description,
 	)
 
-	if votes[promoID] >= ex.HotDealThreshold && !hotDeals[promoID] {
-		hotDeals[promoID] = true
+	if shouldPublish {
 		slog.Info("vote hot deal",
 			"promotion_id", promoID,
 			"category", vote.Category,
-			"value", votes[promoID],
+			"value", currentScore,
 			"description", vote.Description,
 		)
 
