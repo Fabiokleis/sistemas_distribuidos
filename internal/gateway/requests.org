@@ -1,0 +1,23 @@
+* ms gateway requests                                                  :verb:
+template http://localhost:8123
+
+** Get static index.html
+get /
+
+** Get api health
+get /opa
+
+** Get promotions
+get /promotions
+
+** Get promotion
+get /promotion
+
+** Post register promotion
+post /promotions
+Content-Type: application/json; charset=utf-8
+
+{
+	"category": "livro",
+	"description": "Inteligencia artificial - peter novig"
+}

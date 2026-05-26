@@ -1,63 +1,64 @@
 package gateway
 
 import (
-	"crypto/rsa"
 	"fmt"
 	"log"
 	"log/slog"
-	"os"
 	"sync"
 
 	"promocao/internal/crypto"
-	"promocao/internal/exchange"
 	ex "promocao/internal/exchange"
 	"promocao/internal/models/proto/events"
 	mq "promocao/internal/rabbitmq"
 
 	"github.com/google/uuid"
 	"github.com/manifoldco/promptui"
-	amqp "github.com/rabbitmq/amqp091-go"
+
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var (
-	privateKey     *rsa.PrivateKey
-	promocaoPubKey *rsa.PublicKey
-	promos         = make(map[string]*events.PromotionPublishedEvent)
-	mu             sync.RWMutex
-)
-
-func loadKeys() {
-	var err error
-	privateKey, err = crypto.LoadPrivateKey(crypto.GetKeyPath(ex.Gateway + ex.PrivateKeySuffix))
-	if err != nil {
-		log.Fatalf("failed to load rsa private key: %v", err)
-	}
-
-	promocaoPubKey, err = crypto.LoadPublicKey(crypto.GetKeyPath(ex.Promocao + ex.PublicKeySuffix))
-	if err != nil {
-		log.Fatalf("failed to load rsa public key: %v", err)
+func New() Gateway {
+	return Gateway{
+		promos: make(map[string]*events.PromotionPublishedEvent),
+		mu:     sync.RWMutex{},
+		ch:     nil,
 	}
 }
 
-func Run() {
-	ch, err := mq.Connection.Channel()
+func (g *Gateway) GetPromotion(id string) Promotion {
+	g.mu.RLock()
+	selectedPromo := g.promos[id]
+	promo := Promotion{
+		Id:          selectedPromo.PromotionId,
+		Category:    selectedPromo.Category,
+		Description: selectedPromo.Description,
+	}
+	g.mu.RUnlock()
+	return promo
+}
+
+func (g *Gateway) Run() {
+	channel, err := mq.Connection.Channel()
 	if err != nil {
 		log.Fatalf("failed to open channel: %v", err)
 	}
-	defer ch.Close()
+	g.ch = channel
+	defer channel.Close()
 
-	loadKeys()
-	go setupPublicationConsumer(ch)
+	g.LoadKeys()
+	go g.SetupPublicationConsumer() // start receiving events
 
-	runMenu(ch)
-}
-
-func setupPublicationConsumer(ch *amqp.Channel) {
 	log.Println("[*] ms-gateway started ...")
 
-	msgs, err := mq.SetupConsumer(ch, ex.KeyPromotionPublished) // promocao.publicada
+	var forever chan struct{}
+
+	<-forever
+}
+
+func (g *Gateway) SetupPublicationConsumer() {
+
+	msgs, err := mq.SetupConsumer(g.ch, ex.KeyPromotionPublished) // promocao.publicada
 	if err != nil {
 		log.Fatalf("failed to setup callback consumer %v", err)
 		return
@@ -88,9 +89,9 @@ func setupPublicationConsumer(ch *amqp.Channel) {
 				continue
 			}
 
-			mu.Lock()
-			promos[p.PromotionPublished.PromotionId] = p.PromotionPublished
-			mu.Unlock()
+			g.mu.Lock()
+			g.promos[p.PromotionPublished.PromotionId] = p.PromotionPublished
+			g.mu.Unlock()
 
 			payloadRaw, err := ex.FormatPayloadToJSON(p.PromotionPublished)
 			if err != nil {
@@ -108,68 +109,7 @@ func setupPublicationConsumer(ch *amqp.Channel) {
 	}
 }
 
-func runMenu(ch *amqp.Channel) {
-	for {
-		prompt := promptui.Select{
-			Label: "GATEWAY - Select an action",
-			Items: []string{
-				"1. Register New Promotion",
-				"2. List Validated Promotions",
-				"3. Vote on a Promotion",
-				"4. Exit",
-			},
-		}
-
-		_, result, err := prompt.Run()
-		if err != nil {
-			return
-		}
-
-		switch result {
-		case "1. Register New Promotion":
-			handleNewPromotion(ch)
-		case "2. List Validated Promotions":
-			handleListPromotions()
-		case "3. Vote on a Promotion":
-			handleVote(ch)
-		case "4. Exit":
-			fmt.Println("Exiting...")
-			os.Exit(0)
-		}
-	}
-}
-
-func handleNewPromotion(ch *amqp.Channel) {
-	promptCat := promptui.Select{
-		Label: "Category",
-		Items: exchange.Categories,
-	}
-	_, cat, _ := promptCat.Run()
-
-	promptDesc := promptui.Prompt{Label: "Promotion description"}
-	desc, _ := promptDesc.Run()
-
-	publishPromotion(ch, cat, desc)
-	fmt.Println("Promotion sent for validation!")
-}
-
-func handleListPromotions() {
-	mu.RLock()
-	defer mu.RUnlock()
-
-	if len(promos) == 0 {
-		fmt.Println("\n[!] No validated promotions available at the moment.")
-		return
-	}
-
-	fmt.Println("\n--- VALIDATED PROMOTIONS ---")
-	for id, p := range promos {
-		fmt.Printf("ID: %s | Category: %-10s | Description: %s\n", id, p.Category, p.Description)
-	}
-	fmt.Println("----------------------------")
-}
-
-func publishPromotion(ch *amqp.Channel, category string, description string) {
+func (g *Gateway) PublishPromotion(category string, description string) {
 	event := &events.NewPromotionEvent{
 		PromotionId: uuid.New().String(),
 		Category:    category,
@@ -197,27 +137,27 @@ func publishPromotion(ch *amqp.Channel, category string, description string) {
 		return
 	}
 
-	if err := mq.PublishEvent(ch, ex.KeyPromotionReceived, bodyBytes); err != nil {
+	if err := mq.PublishEvent(g.ch, ex.KeyPromotionReceived, bodyBytes); err != nil {
 		slog.Error("failed to publish promotion", "error", err)
 	}
 }
 
-func handleVote(ch *amqp.Channel) {
-	mu.RLock()
+func (g *Gateway) HandleVote() {
+	g.mu.RLock()
 
-	if len(promos) == 0 {
+	if len(g.promos) == 0 {
 		fmt.Println("[!] No promotions available to vote.")
-		mu.RUnlock()
+		g.mu.RUnlock()
 		return
 	}
 
 	var options []string
 	var ids []string
-	for id, p := range promos {
+	for id, p := range g.promos {
 		options = append(options, fmt.Sprintf("[%s] %s", p.Category, p.Description))
 		ids = append(ids, id)
 	}
-	mu.RUnlock()
+	g.mu.RUnlock()
 
 	promptSelect := promptui.Select{
 		Label: "Select the Promotion to vote on",
@@ -238,9 +178,9 @@ func handleVote(ch *amqp.Channel) {
 		voteValue = -1
 	}
 
-	mu.RLock()
-	selectedPromo := promos[selectedID]
-	mu.RUnlock()
+	g.mu.RLock()
+	selectedPromo := g.promos[selectedID]
+	g.mu.RUnlock()
 
 	voteEvent := &events.VoteEvent{
 		PromotionId: selectedID,
@@ -270,7 +210,7 @@ func handleVote(ch *amqp.Channel) {
 		return
 	}
 
-	err = mq.PublishEvent(ch, ex.KeyPromotionVote, body)
+	err = mq.PublishEvent(g.ch, ex.KeyPromotionVote, body)
 
 	if err != nil {
 		slog.Error("failed to dispatch notification vote",

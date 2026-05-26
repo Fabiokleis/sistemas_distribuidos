@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"promocao/internal/gateway"
+	gwt "promocao/internal/gateway"
 	mq "promocao/internal/rabbitmq"
 )
 
@@ -13,5 +13,9 @@ func main() {
 	}
 	defer mq.Connection.Close()
 
-	gateway.Run()
+	g := gwt.New()
+	g.LoadKeys()
+	go g.Run()
+	r := gwt.Router{}
+	r.Serve(g)
 }

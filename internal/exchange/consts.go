@@ -24,3 +24,8 @@ const (
 	KeyNotificationPrefix = "promocao."
 	KeyHotDeal            = "promocao.destaque"
 )
+
+type DaemonService interface {
+	Run()
+	LoadKeys()
+}

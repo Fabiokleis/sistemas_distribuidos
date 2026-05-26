@@ -20,7 +20,7 @@ var (
 	privateKey    *rsa.PrivateKey
 	gatewayPubKey *rsa.PublicKey
 
-	votes    = make(map[string]int32)
+	votes    = make(map[string]int32) // promo
 	hotDeals = make(map[string]bool)
 	mu       sync.Mutex
 )

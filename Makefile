@@ -6,10 +6,10 @@ PROJECTS := $(shell ls cmd)
 BINARIES := $(addprefix $(BINARY_DIR)/,$(PROJECTS))
 RUN_PROJECTS := $(addprefix run-,$(PROJECTS))
 
-.PHONY: all build proto clean run $(PROJECTS)
+.PHONY: all build proto clean run static $(PROJECTS)
 all: build
 
-build: proto $(PROJECTS)
+build: proto static $(PROJECTS)
 
 $(PROJECTS): %: $(BINARY_DIR)/%
 
@@ -23,6 +23,10 @@ $(BINARY_DIR)/%: proto cmd/%/*.go
 run-%: $(BINARY_DIR)/%
 	@echo "executing $* ..."
 	@./$(BINARY_DIR)/$*
+
+static:
+	@echo "coping static files ..."
+	@cp -r static $(BINARY_DIR)/
 
 proto:
 	@echo "compiling protobuf ..."
