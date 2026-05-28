@@ -17,5 +17,5 @@ func main() {
 	g.LoadKeys()
 	go g.Run()
 	r := gwt.Router{}
-	r.Serve(g)
+	r.Serve(&g)
 }

@@ -38,6 +38,22 @@ func (g *Gateway) GetPromotion(id string) Promotion {
 	return promo
 }
 
+func (g *Gateway) ListPromotions() []Promotion {
+	promotions := make([]Promotion, 0, len(g.promos))
+	for _, p := range g.promos {
+		promotions = append(
+			promotions,
+			Promotion{
+				Id:          p.PromotionId,
+				Category:    p.Category,
+				Description: p.Description,
+			},
+		)
+
+	}
+	return promotions
+}
+
 func (g *Gateway) Run() {
 	channel, err := mq.Connection.Channel()
 	if err != nil {
