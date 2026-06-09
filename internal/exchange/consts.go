@@ -1,10 +1,9 @@
 package exchange
 
-const Name = "promocao"
-
 var Categories = []string{"livro", "jogo"}
 
 const (
+	Name             = "promocao"
 	PrivateKeySuffix = "_private.pem"
 	PublicKeySuffix  = "_public.pem"
 	Gateway          = "gateway"
@@ -23,6 +22,9 @@ const (
 	// published by ms ranking (for notifications)
 	KeyNotificationPrefix = "promocao."
 	KeyHotDeal            = "promocao.destaque"
+
+	// published by ms notificacao (for gateway SSE broadcast)
+	KeyNotificationHotDeal = "notificacao.hotdeal"
 )
 
 type DaemonService interface {

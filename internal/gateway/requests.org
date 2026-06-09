@@ -2,22 +2,30 @@
 template http://localhost:8123
 
 ** Get static index.html
-get /
+GET /
 
 ** Get api health
-get /opa
+GET /opa
 
 ** Get promotions
-get /promotions
+GET /promotions
 
 ** Get promotion
-get /promotion
+GET /promotion/{}/
 
 ** Post register promotion
-post /promotions
+POST /promotions
 Content-Type: application/json; charset=utf-8
 
 {
   "category": "livro",
   "description": "Inteligencia artificial - peter novig"
 }
+
+** Post register positive vote
+POST /promotions/{}/vote?value=1
+Context-Type: application/json; charset=utf-8
+
+** Post register negative vote
+POST /promotions/{}/vote?value=-1
+Context-Type: application/json; charset=utf-8

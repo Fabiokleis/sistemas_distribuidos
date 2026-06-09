@@ -117,4 +117,17 @@ func processNotification(ch *amqp.Channel, d amqp.Delivery) {
 			"description", promo.Description,
 		)
 	}
+
+	if d.RoutingKey == ex.KeyHotDeal {
+		if err := mq.PublishEvent(ch, ex.KeyNotificationHotDeal, bodyBytes); err != nil {
+			slog.Error("failed to dispatch hotdeal notification to gateway",
+				"error", err,
+			)
+		} else {
+			slog.Info("dispatched hotdeal to gateway",
+				"routing-key", ex.KeyNotificationHotDeal,
+				"description", promo.Description,
+			)
+		}
+	}
 }

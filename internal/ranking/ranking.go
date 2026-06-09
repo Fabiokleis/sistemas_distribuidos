@@ -101,7 +101,7 @@ func processVote(ch *amqp.Channel, d amqp.Delivery) {
 	currentScore := state.Score
 
 	shouldPublish := false
-	if currentScore >= ex.HotDealThreshold && !state.IsHotDeal {
+	if currentScore >= ex.HotDealThreshold && vote.VoteValue > 0 {
 		state.IsHotDeal = true
 		shouldPublish = true
 	}
