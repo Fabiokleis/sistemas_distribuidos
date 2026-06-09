@@ -1,17 +1,78 @@
- <!DOCTYPE html>
-<html>
-  <head>
-    
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="keywords" content="sistemas distribuidos, promocao, rabbitmq, rest, golang">
-    <meta name="author" content="Fabio Kleis">
-    <link rel="stylesheet" href="style.css">
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Promocoes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-    <title>Promocao</title>
-  </head>
-  <body>
-    <h1>Promocao</h1>
-    <p>hello, world!</p>
-  </body>
+  <header>
+    <span class="site-title">Promocoes</span>
+    <nav class="role-nav">
+      <button id="btn-loja" class="role-btn" onclick="setRole('loja')">loja</button>
+      <button id="btn-consumidor" class="role-btn" onclick="setRole('consumidor')">consumidor</button>
+    </nav>
+    <span id="sse-status" class="status disconnected" style="display:none">desconectado</span>
+  </header>
+
+  <div id="role-select-screen">
+    <p>selecione seu perfil</p>
+    <div class="role-choice">
+      <button onclick="setRole('loja')">loja</button>
+      <button onclick="setRole('consumidor')">consumidor</button>
+    </div>
+  </div>
+
+  <main id="main-content" style="display:none">
+    <div class="left-panel">
+
+      <div id="section-cadastro" class="section" style="display:none">
+        <div class="section-title">Cadastrar Promocao</div>
+        <form id="promo-form">
+          <input type="email" id="new-email" placeholder="e-mail da loja" required>
+          <input type="text" id="new-category" placeholder="categoria" required minlength="3" maxlength="50">
+          <input type="text" id="new-description" placeholder="descricao" required minlength="1" maxlength="255">
+          <button type="submit">enviar</button>
+        </form>
+        <span id="promo-feedback" class="feedback"></span>
+      </div>
+
+      <div id="section-interesses" class="section" style="display:none">
+        <div class="section-title">Interesses
+          <span id="categories-hint" class="hint">(conecte ao SSE)</span>
+        </div>
+        <div id="categories-tags"></div>
+      </div>
+
+      <div id="section-notificacoes" class="section" style="display:none">
+        <div class="section-title row-between">
+          <span>Notificacoes</span>
+          <button class="link-btn" onclick="clearNotifications()">limpar</button>
+        </div>
+        <div id="notif-log">
+          <p class="empty" id="notif-empty">nenhuma notificacao recebida.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="right-panel">
+      <div class="section-title row-between">
+        <span>Promocoes</span>
+        <button class="link-btn" onclick="loadPromotions()">atualizar</button>
+      </div>
+      <div id="promotions-list">
+        <p class="empty">nenhuma promocao.</p>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
 </html>
