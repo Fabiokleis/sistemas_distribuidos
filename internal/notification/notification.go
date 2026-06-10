@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"promocao/internal/crypto"
+	"promocao/internal/email"
 	ex "promocao/internal/exchange"
 	"promocao/internal/models/proto/events"
 	mq "promocao/internal/rabbitmq"
@@ -87,6 +88,27 @@ func processNotification(ch *amqp.Channel, d amqp.Delivery) {
 			"routing_key", d.RoutingKey,
 			"error", err)
 		return
+	}
+
+	if promo.StoreEmail != "" {
+		switch d.RoutingKey {
+		case ex.KeyPromotionPublished:
+			if err := email.Send(promo.StoreEmail, "Promoção aprovada",
+				"Sua promoção foi aprovada e publicada!\n\nCategoria: "+promo.Category+"\nDescrição: "+promo.Description,
+			); err != nil {
+				slog.Error("failed to send approved email", "to", promo.StoreEmail, "error", err)
+			} else {
+				slog.Info("email sent: aprovada", "to", promo.StoreEmail)
+			}
+		case ex.KeyHotDeal:
+			if err := email.Send(promo.StoreEmail, "Promoção em destaque (Hot Deal)",
+				"Parabéns! Sua promoção se tornou um Hot Deal!\n\nCategoria: "+promo.Category+"\nDescrição: "+promo.Description,
+			); err != nil {
+				slog.Error("failed to send hotdeal email", "to", promo.StoreEmail, "error", err)
+			} else {
+				slog.Info("email sent: hot deal", "to", promo.StoreEmail)
+			}
+		}
 	}
 
 	if d.RoutingKey == ex.KeyHotDeal {

@@ -29,7 +29,7 @@ func (l *Listener) Consume(key string, handler HandleEvent) error {
 	}
 
 	ctx, cancel := context.WithCancel(l.ctx)
-	l.subscriptions[key] = ConsumerHandler{ctx: cancel, handler: handler}
+	l.subscriptions[key] = cancel
 
 	go func() {
 		slog.Info("consumer started", "key", key)
@@ -64,7 +64,7 @@ func (l *Listener) Unsubscribe(key string) error {
 		return fmt.Errorf("no active consumer for key: %s", key)
 	}
 
-	consumer.ctx()
+	consumer() // cancel ctx
 	delete(l.subscriptions, key)
 	return nil
 }

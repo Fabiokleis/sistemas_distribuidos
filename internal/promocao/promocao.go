@@ -104,6 +104,7 @@ func processIncomingPromotion(ch *amqp.Channel, body []byte) {
 		PromotionId: newPromo.PromotionId,
 		Category:    newPromo.Category,
 		Description: newPromo.Description,
+		StoreEmail:  newPromo.StoreEmail,
 	}
 
 	outInnerBytes, _ := proto.Marshal(publishedEvent)
@@ -126,7 +127,6 @@ func processIncomingPromotion(ch *amqp.Channel, body []byte) {
 		return
 	}
 
-	// promocao.publicada
 	if err := mq.PublishEvent(ch, ex.KeyPromotionPublished, outBody); err != nil {
 		slog.Error("failed to dispatch notification to gateway",
 			"category", newPromo.Category,

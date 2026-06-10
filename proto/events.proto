@@ -22,7 +22,8 @@ message EventEnvelope {
 message NewPromotionEvent {
     string promotion_id = 1;
     string category = 2;
-    string description = 3;  
+    string description = 3;
+    string store_email = 4;
 }
 
 message VoteEvent {
@@ -30,10 +31,12 @@ message VoteEvent {
     int32 vote_value = 2;
     string category = 3;
     string description = 4;
+    string store_email = 5;
 }
 
 message PromotionPublishedEvent {
     string promotion_id = 1;
     string category = 2;
     string description = 3;
+    string store_email = 4;
 }

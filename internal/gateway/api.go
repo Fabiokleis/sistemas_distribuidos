@@ -87,7 +87,7 @@ func (gc *GatewayController) RegisterPromotion(w http.ResponseWriter, req *http.
 		return
 	}
 
-	if err := gc.Service.PublishPromotion(promo.Category, promo.Description); err != nil {
+	if err := gc.Service.PublishPromotion(promo.Category, promo.Description, promo.StoreEmail); err != nil {
 		http.Error(w, "failed to publish promotion", http.StatusInternalServerError)
 		return
 	}

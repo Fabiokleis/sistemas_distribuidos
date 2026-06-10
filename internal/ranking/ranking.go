@@ -133,6 +133,7 @@ func publishHotDeal(ch *amqp.Channel, vote *events.VoteEvent) {
 		PromotionId: vote.PromotionId,
 		Category:    vote.Category,
 		Description: vote.Description,
+		StoreEmail:  vote.StoreEmail,
 	}
 
 	innerBytes, _ := proto.Marshal(promo)

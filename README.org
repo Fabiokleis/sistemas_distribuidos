@@ -1,7 +1,7 @@
 #+TITLE: Sistema de Promoção - Sistemas Distribuídos
 #+AUTHOR: Fabio Kleis
 #+DATE: 2026-04-12
-#+DESCRIPTION: Documentação do trabalho sistema promoção: Microsserviços, Sistema de Mensageria, Criptografia de Chave Assimétrica.
+#+DESCRIPTION: Documentação do trabalho sistema promoção: Microsserviços, Sistema de Mensageria, Criptografia de Chave Assimétrica, API REST.
 
 trabalho sistema de promoção, para a comunicação dos microsserviços foi utilizado o middleware Rabbitmq.
 
@@ -21,6 +21,15 @@ docker run --detach --hostname rabbitmq --name promocao-rabbitmq \
     --publish 15672:15672 \
     --publish 5672:5672 \
      rabbitmq:management
+#+END_SRC
+para executar o mailpit para envio de email localmente:
+#+BEGIN_SRC bash
+docker run -d \
+    --restart unless-stopped \
+    --name=mailpit \
+    -p 8025:8025 \
+    -p 1025:1025 \
+    axllent/mailpit
 #+END_SRC
 
 ** Build & Run
@@ -42,5 +51,9 @@ Para remover os binários:
 make clean
 #+END_SRC
 
-** Exemplo
+** Exemplo trabalho 1
 [[file:exemplo.png]]
+
+
+** Exemplo trabalho 2
+

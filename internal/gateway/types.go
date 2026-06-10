@@ -34,14 +34,9 @@ type SSEClient struct {
 
 type HandleEvent func(topic Topic, event *events.EventEnvelope)
 
-type ConsumerHandler struct {
-	ctx     context.CancelFunc
-	handler HandleEvent
-}
-
 type Listener struct {
 	ctx           context.Context
-	subscriptions map[string]ConsumerHandler
+	subscriptions map[string]context.CancelFunc
 	mu            sync.RWMutex
 	ch            *amqp.Channel
 }
@@ -67,7 +62,7 @@ type GatewayService interface {
 	SubscribeConsumer(clientID string, category string) error
 	UnsubscribeConsumer(clientID string, category string) error
 	HandleVote(id string, num int32) error
-	PublishPromotion(category string, description string) error
+	PublishPromotion(category string, description string, storeEmail string) error
 }
 
 type GatewayController struct {

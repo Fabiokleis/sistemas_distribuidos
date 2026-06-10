@@ -65,7 +65,7 @@ func (g *Gateway) Run() {
 
 	g.listener = &Listener{
 		ctx:           context.Background(),
-		subscriptions: make(map[string]ConsumerHandler),
+		subscriptions: make(map[string]context.CancelFunc),
 		mu:            sync.RWMutex{},
 		ch:            channel,
 	}
@@ -116,6 +116,7 @@ func (g *Gateway) SubscribeConsumer(clientID string, category string) error {
 		return nil
 	}
 
+	// 1 consumer for all clients
 	return g.listener.Consume(routingKey, func(topic Topic, event *events.EventEnvelope) {
 		p, ok := event.Payload.(*events.EventEnvelope_PromotionPublished)
 		if !ok {
@@ -162,25 +163,6 @@ func (g *Gateway) UnsubscribeConsumer(clientID string, category string) error {
 		return g.listener.Unsubscribe(ex.KeyNotificationPrefix + category)
 	}
 	return nil
-}
-
-func removeString(slice []string, s string) []string {
-	result := slice[:0]
-	for _, v := range slice {
-		if v != s {
-			result = append(result, v)
-		}
-	}
-	return result
-}
-
-func appendUnique(slice []string, s string) []string {
-	for _, v := range slice {
-		if v == s {
-			return slice
-		}
-	}
-	return append(slice, s)
 }
 
 func (g *Gateway) SetupHotDealConsumer() {
@@ -258,11 +240,12 @@ func (g *Gateway) SetupPublicationConsumer() {
 
 }
 
-func (g *Gateway) PublishPromotion(category string, description string) error {
+func (g *Gateway) PublishPromotion(category string, description string, storeEmail string) error {
 	event := &events.NewPromotionEvent{
 		PromotionId: uuid.New().String(),
 		Category:    category,
 		Description: description,
+		StoreEmail:  storeEmail,
 	}
 
 	innerBytes, _ := proto.Marshal(event)
@@ -309,6 +292,7 @@ func (g *Gateway) HandleVote(id string, num int32) error {
 		VoteValue:   num,
 		Category:    selectedPromo.Category,
 		Description: selectedPromo.Description,
+		StoreEmail:  selectedPromo.StoreEmail,
 	}
 
 	innerBytes, _ := proto.Marshal(voteEvent)
@@ -350,4 +334,23 @@ func (g *Gateway) HandleVote(id string, num int32) error {
 		)
 		return nil
 	}
+}
+
+func removeString(slice []string, s string) []string {
+	result := slice[:0]
+	for _, v := range slice {
+		if v != s {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func appendUnique(slice []string, s string) []string {
+	for _, v := range slice {
+		if v == s {
+			return slice
+		}
+	}
+	return append(slice, s)
 }
