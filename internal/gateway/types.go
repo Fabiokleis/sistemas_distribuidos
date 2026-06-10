@@ -62,7 +62,7 @@ type GatewayService interface {
 	SubscribeConsumer(clientID string, category string) error
 	UnsubscribeConsumer(clientID string, category string) error
 	HandleVote(id string, num int32) error
-	PublishPromotion(category string, description string, storeEmail string) error
+	PublishPromotion(signature []byte, promo Promotion) error
 }
 
 type GatewayController struct {

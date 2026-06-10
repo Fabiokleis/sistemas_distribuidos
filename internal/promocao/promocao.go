@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	privateKey    *rsa.PrivateKey
-	gatewayPubKey *rsa.PublicKey
+	privateKey  *rsa.PrivateKey
+	storePubKey *rsa.PublicKey
 )
 
 func loadKeys() {
@@ -28,7 +28,7 @@ func loadKeys() {
 		log.Fatalf("failed to load rsa private key: %v", err)
 	}
 
-	gatewayPubKey, err = crypto.LoadPublicKey(crypto.GetKeyPath(ex.Gateway + ex.PublicKeySuffix))
+	storePubKey, err = crypto.LoadPublicKey(crypto.GetKeyPath(ex.Store + ex.PublicKeySuffix))
 	if err != nil {
 		log.Fatalf("failed to load rsa public key: %v", err)
 	}
@@ -81,16 +81,11 @@ func processIncomingPromotion(ch *amqp.Channel, body []byte) {
 		return
 	}
 
-	err = crypto.VerifySignature(gatewayPubKey, innerBytes, envelope.Signature)
+	err = crypto.VerifySignature(storePubKey, innerBytes, envelope.Signature)
 	if err != nil {
 		slog.Error("INVALID SIGNATURE: ms promotion dropped untrusted message from gateway",
 			"error", err,
 			"promotion_id", newPromo.PromotionId)
-		return
-	}
-
-	if newPromo.Category == "" || newPromo.Description == "" {
-		slog.Warn("promotion dropped missing data", "id", newPromo.PromotionId)
 		return
 	}
 

@@ -9,7 +9,6 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"promocao/internal/crypto"
 	"strconv"
 	"time"
 
@@ -83,16 +82,11 @@ func (gc *GatewayController) RegisterPromotion(w http.ResponseWriter, req *http.
 		return
 	}
 
+	// expect base64 signature avoinding invalid chars
 	signatureBytes, err := base64.StdEncoding.DecodeString(storeSignature)
 	if err != nil {
 		slog.Warn("store signature is not valid base64", "error", err)
 		http.Error(w, "invalid store signature encoding", http.StatusUnauthorized)
-		return
-	}
-
-	if err := crypto.VerifySignature(storePubKey, bodyBytes, signatureBytes); err != nil {
-		slog.Warn("store signature validation failed", "error", err)
-		http.Error(w, "invalid store signature", http.StatusUnauthorized)
 		return
 	}
 
@@ -116,7 +110,7 @@ func (gc *GatewayController) RegisterPromotion(w http.ResponseWriter, req *http.
 		return
 	}
 
-	if err := gc.Service.PublishPromotion(promo.Category, promo.Description, promo.StoreEmail); err != nil {
+	if err := gc.Service.PublishPromotion(signatureBytes, promo); err != nil {
 		http.Error(w, "failed to publish promotion", http.StatusInternalServerError)
 		return
 	}

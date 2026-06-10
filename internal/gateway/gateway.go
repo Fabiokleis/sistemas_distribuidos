@@ -240,20 +240,12 @@ func (g *Gateway) SetupPublicationConsumer() {
 
 }
 
-func (g *Gateway) PublishPromotion(category string, description string, storeEmail string) error {
+func (g *Gateway) PublishPromotion(signature []byte, promo Promotion) error {
 	event := &events.NewPromotionEvent{
 		PromotionId: uuid.New().String(),
-		Category:    category,
-		Description: description,
-		StoreEmail:  storeEmail,
-	}
-
-	innerBytes, _ := proto.Marshal(event)
-
-	signature, err := crypto.SignPayload(privateKey, innerBytes)
-	if err != nil {
-		slog.Error("failed to sign payload", "error", err)
-		return err
+		Category:    promo.Category,
+		Description: promo.Description,
+		StoreEmail:  promo.StoreEmail,
 	}
 
 	wrap := &events.EventEnvelope{
