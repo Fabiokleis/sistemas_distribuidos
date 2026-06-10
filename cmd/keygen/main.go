@@ -16,7 +16,7 @@ func main() {
 	outDir := flag.String("out", "keys", "keys directory")
 	flag.Parse()
 
-	services := []string{"gateway", "promocao", "ranking"}
+	services := []string{"gateway", "promocao", "ranking", "store"}
 
 	if err := os.MkdirAll(*outDir, 0755); err != nil {
 		log.Fatalf("failed to create directories %s: %v", *outDir, err)

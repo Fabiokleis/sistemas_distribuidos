@@ -10,6 +10,7 @@ import (
 var (
 	privateKey     *rsa.PrivateKey
 	promocaoPubKey *rsa.PublicKey
+	storePubKey    *rsa.PublicKey
 )
 
 func (g *Gateway) LoadKeys() {
@@ -20,6 +21,11 @@ func (g *Gateway) LoadKeys() {
 	}
 
 	promocaoPubKey, err = crypto.LoadPublicKey(crypto.GetKeyPath(ex.Promocao + ex.PublicKeySuffix))
+	if err != nil {
+		log.Fatalf("failed to load rsa public key: %v", err)
+	}
+
+	storePubKey, err = crypto.LoadPublicKey(crypto.GetKeyPath(ex.Store + ex.PublicKeySuffix))
 	if err != nil {
 		log.Fatalf("failed to load rsa public key: %v", err)
 	}

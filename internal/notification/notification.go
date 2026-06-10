@@ -90,6 +90,8 @@ func processNotification(ch *amqp.Channel, d amqp.Delivery) {
 		return
 	}
 
+	slog.Info("ms notification routing key received: ", "key", d.RoutingKey, "email", promo.StoreEmail)
+
 	if promo.StoreEmail != "" {
 		switch d.RoutingKey {
 		case ex.KeyPromotionPublished:

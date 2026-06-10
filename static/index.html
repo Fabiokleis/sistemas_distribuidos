@@ -10,43 +10,20 @@
 
   <header>
     <span class="site-title">Promocoes</span>
-    <nav class="role-nav">
-      <button id="btn-loja" class="role-btn" onclick="setRole('loja')">loja</button>
-      <button id="btn-consumidor" class="role-btn" onclick="setRole('consumidor')">consumidor</button>
-    </nav>
-    <span id="sse-status" class="status disconnected" style="display:none">desconectado</span>
+    <span id="sse-status" class="status disconnected">desconectado</span>
   </header>
 
-  <div id="role-select-screen">
-    <p>selecione seu perfil</p>
-    <div class="role-choice">
-      <button onclick="setRole('loja')">loja</button>
-      <button onclick="setRole('consumidor')">consumidor</button>
-    </div>
-  </div>
-
-  <main id="main-content" style="display:none">
+  <main id="main-content" style="display: grid">
     <div class="left-panel">
 
-      <div id="section-cadastro" class="section" style="display:none">
-        <div class="section-title">Cadastrar Promocao</div>
-        <form id="promo-form">
-          <input type="email" id="new-email" placeholder="e-mail da loja" required>
-          <input type="text" id="new-category" placeholder="categoria" required minlength="3" maxlength="50">
-          <input type="text" id="new-description" placeholder="descricao" required minlength="1" maxlength="255">
-          <button type="submit">enviar</button>
-        </form>
-        <span id="promo-feedback" class="feedback"></span>
-      </div>
-
-      <div id="section-interesses" class="section" style="display:none">
+      <div id="section-interesses" class="section">
         <div class="section-title">Interesses
           <span id="categories-hint" class="hint">(conecte ao SSE)</span>
         </div>
         <div id="categories-tags"></div>
       </div>
 
-      <div id="section-notificacoes" class="section" style="display:none">
+      <div id="section-notificacoes" class="section">
         <div class="section-title row-between">
           <span>Notificacoes</span>
           <button class="link-btn" onclick="clearNotifications()">limpar</button>

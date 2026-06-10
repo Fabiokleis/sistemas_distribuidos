@@ -1,17 +1,24 @@
 package gateway
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"net/http"
+	"promocao/internal/crypto"
 	"strconv"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+)
+
+const (
+	StoreSignatureHeader = "x-store-signature"
 )
 
 func loggingMiddleware(next http.Handler) http.Handler {
@@ -61,17 +68,39 @@ func (*GatewayController) Opa(w http.ResponseWriter, req *http.Request) {
 }
 
 func (gc *GatewayController) RegisterPromotion(w http.ResponseWriter, req *http.Request) {
-	var promo Promotion
+	w.Header().Set("Content-Type", "application/json")
 
-	decoder := json.NewDecoder(req.Body)
-	decoder.DisallowUnknownFields()
+	bodyBytes, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(w, "failed to read request body", http.StatusBadRequest)
+		return
+	}
+	defer req.Body.Close()
 
-	if err := decoder.Decode(&promo); err != nil {
-		http.Error(w, "invalid JSON payload", http.StatusBadRequest)
+	storeSignature := req.Header.Get(StoreSignatureHeader)
+	if storeSignature == "" {
+		http.Error(w, "missing store signature header", http.StatusUnauthorized)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	signatureBytes, err := base64.StdEncoding.DecodeString(storeSignature)
+	if err != nil {
+		slog.Warn("store signature is not valid base64", "error", err)
+		http.Error(w, "invalid store signature encoding", http.StatusUnauthorized)
+		return
+	}
+
+	if err := crypto.VerifySignature(storePubKey, bodyBytes, signatureBytes); err != nil {
+		slog.Warn("store signature validation failed", "error", err)
+		http.Error(w, "invalid store signature", http.StatusUnauthorized)
+		return
+	}
+
+	var promo Promotion
+	if err := json.Unmarshal(bodyBytes, &promo); err != nil {
+		http.Error(w, "invalid JSON payload, failed to marshal protobuf", http.StatusUnprocessableEntity)
+		return
+	}
 
 	if err := gc.Validate.Struct(promo); err != nil {
 		var validationErrors validator.ValidationErrors

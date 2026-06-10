@@ -9,6 +9,7 @@ const (
 	Gateway          = "gateway"
 	Promocao         = "promocao"
 	Ranking          = "ranking"
+	Store            = "store"
 
 	HotDealThreshold = 3
 	ContentType      = "application/x-protobuf"
