@@ -4,17 +4,18 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"promocao/internal/crypto"
 	ex "promocao/internal/exchange"
-	gtw "promocao/internal/gateway"
+	"promocao/internal/models/proto/events"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/manifoldco/promptui"
+	"google.golang.org/protobuf/proto"
 )
 
 const defaultGatewayURL = "http://localhost:8123/promotions"
@@ -118,27 +119,28 @@ func prompt() {
 			return
 		}
 
-		promo := gtw.Promotion{
+		promo := &events.NewPromotionEvent{
+			PromotionId: uuid.New().String(),
 			Category:    strings.TrimSpace(category),
 			Description: strings.TrimSpace(description),
 			StoreEmail:  strings.TrimSpace(storeEmail),
 		}
 
-		bodyBytes, err := json.Marshal(promo)
+		innerBytes, err := proto.Marshal(promo)
 		if err != nil {
 			log.Fatalf("failed to marshal promotion: %v", err)
 		}
 
-		signature, err := crypto.SignPayload(privateKey, bodyBytes)
+		signature, err := crypto.SignPayload(privateKey, innerBytes)
 		if err != nil {
 			log.Fatalf("failed to sign promotion: %v", err)
 		}
 
-		req, err := http.NewRequest(http.MethodPost, gatewayURL, bytes.NewReader(bodyBytes))
+		req, err := http.NewRequest(http.MethodPost, gatewayURL, bytes.NewReader(innerBytes))
 		if err != nil {
 			log.Fatalf("failed to create request: %v", err)
 		}
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", ex.ContentType)
 		req.Header.Set("x-store-signature", base64.StdEncoding.EncodeToString(signature))
 
 		resp, err := http.DefaultClient.Do(req)

@@ -9,11 +9,13 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"promocao/internal/models/proto/events"
 	"strconv"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -90,10 +92,17 @@ func (gc *GatewayController) RegisterPromotion(w http.ResponseWriter, req *http.
 		return
 	}
 
-	var promo Promotion
-	if err := json.Unmarshal(bodyBytes, &promo); err != nil {
+	var promoEvent events.NewPromotionEvent
+	if err := proto.Unmarshal(bodyBytes, &promoEvent); err != nil {
+		slog.Error("failed to unmarshal protobuf", "error", err)
 		http.Error(w, "invalid JSON payload, failed to marshal protobuf", http.StatusUnprocessableEntity)
-		return
+	}
+
+	promo := Promotion{
+		Id:          promoEvent.PromotionId,
+		Category:    promoEvent.Category,
+		Description: promoEvent.Description,
+		StoreEmail:  promoEvent.StoreEmail,
 	}
 
 	if err := gc.Validate.Struct(promo); err != nil {
@@ -110,7 +119,7 @@ func (gc *GatewayController) RegisterPromotion(w http.ResponseWriter, req *http.
 		return
 	}
 
-	if err := gc.Service.PublishPromotion(signatureBytes, promo); err != nil {
+	if err := gc.Service.PublishPromotion(signatureBytes, &promoEvent); err != nil {
 		http.Error(w, "failed to publish promotion", http.StatusInternalServerError)
 		return
 	}

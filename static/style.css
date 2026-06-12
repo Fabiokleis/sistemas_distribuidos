@@ -62,8 +62,8 @@ main {
 }
 
 .hint { font-size: 0.75rem; color: #aaa; }
-.empty { font-size: 0.82rem; color: #bbb; padding: 0.5rem
-						       
+.empty { font-size: 0.82rem; color: #bbb; padding: 0.5rem; }
+
 input[type="text"] {
   padding: 0.45rem 0;
   border: none;

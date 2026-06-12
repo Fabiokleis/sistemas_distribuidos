@@ -12,8 +12,6 @@ import (
 	"promocao/internal/models/proto/events"
 	mq "promocao/internal/rabbitmq"
 
-	"github.com/google/uuid"
-
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -240,14 +238,7 @@ func (g *Gateway) SetupPublicationConsumer() {
 
 }
 
-func (g *Gateway) PublishPromotion(signature []byte, promo Promotion) error {
-	event := &events.NewPromotionEvent{
-		PromotionId: uuid.New().String(),
-		Category:    promo.Category,
-		Description: promo.Description,
-		StoreEmail:  promo.StoreEmail,
-	}
-
+func (g *Gateway) PublishPromotion(signature []byte, event *events.NewPromotionEvent) error {
 	wrap := &events.EventEnvelope{
 		Timestamp:  timestamppb.Now(),
 		ProducerId: ex.Gateway,
