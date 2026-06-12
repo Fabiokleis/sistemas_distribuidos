@@ -1,4 +1,4 @@
-const API = '';
+const API = 'http://localhost:8123';
 
 let userRole = null;
 let clientId = null;
